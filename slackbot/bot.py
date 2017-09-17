@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
+import datetime
 import imp
 import importlib
 import logging
@@ -8,7 +9,7 @@ import time
 from glob import glob
 from six.moves import _thread
 from slackbot import settings
-from slackbot.manager import PluginsManager
+from slackbot.manager import PluginsManager, TasksManager
 from slackbot.slackclient import SlackClient
 from slackbot.dispatcher import MessageDispatcher
 
@@ -88,3 +89,10 @@ def default_reply(*args, **kwargs):
         return func
 
     return wrapper if invoked else wrapper(func)
+
+
+def task(trigger):
+    def wrapper(func):
+        TasksManager.tasks.append([trigger, func, None])
+
+    return wrapper

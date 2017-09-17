@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import absolute_import
+import datetime
 import logging
 import re
 import time
@@ -8,7 +9,7 @@ import traceback
 from functools import wraps
 
 import six
-from slackbot.manager import PluginsManager
+from slackbot.manager import PluginsManager, TasksManager
 from slackbot.utils import WorkerPool
 from slackbot import settings
 
@@ -149,6 +150,7 @@ class MessageDispatcher(object):
                 elif event_type in ['team_join', 'user_change']:
                     user = [event['user']]
                     self._client.parse_user_data(user)
+            self._check_tasks()
             time.sleep(1)
 
     def _default_reply(self, msg):
@@ -168,6 +170,30 @@ class MessageDispatcher(object):
 
         m = Message(self._client, msg)
         m.reply(default_reply)
+
+    def _check_tasks(self):
+        for task in TasksManager.tasks:
+            trigger, func, since = task[:3]
+
+            if isinstance(trigger, datetime.datetime):
+                n = datetime.datetime.now(tz=trigger.tzinfo)
+                w = trigger
+            elif isinstance(trigger, datetime.timedelta):
+                n = datetime.datetime.now()
+                w = since + trigger if since else n
+            elif isinstance(trigger, datetime.time):
+                n = datetime.datetime.now(tz=trigger.tzinfo)
+                w = n.replace(hour=trigger.hour,
+                              minute=trigger.minute,
+                              second=trigger.second,
+                              microsecond=trigger.microsecond)
+            else:
+                m = 'Invalid trigger type {0}'.format(type(trigger))
+                raise Exception(m)
+
+            if w <= n and (not since or since < w) and (n - w).seconds <= 60:
+                func(self._client)
+                task[2] = n
 
 
 def unicode_compact(func):

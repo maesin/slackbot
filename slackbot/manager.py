@@ -74,3 +74,7 @@ class PluginsManager(object):
 
         if not has_matching_plugin:
             yield None, None
+
+
+class TasksManager(object):
+    tasks = []
